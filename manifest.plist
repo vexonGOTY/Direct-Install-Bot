@@ -19,11 +19,11 @@
                 <key>bundle-identifier</key>
                 <string>flero.sp67.com</string>
                 <key>bundle-version</key>
-                <string>2.207 (the one in the plist, not the appstore, they dont match sometimes)</string>
+                <string>2.207</string>
                 <key>kind</key>
                 <string>software</string>
                 <key>title</key>
-                <string>Flero (what shows on ur homescreen)</string>
+                <string>Flero</string>
             </dict>
         </dict>
     </array>
