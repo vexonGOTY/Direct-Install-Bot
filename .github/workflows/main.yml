@@ -50,7 +50,7 @@ jobs:
 
           cp "$FILE" "$TEMP_DIR/manifest.plist"
 
-          sed -i "s|put ur SIGNED DIRECT link here|${{ github.event.inputs.url }}|g" "$TEMP_DIR/manifest.plist"
+          sed -i "s|PPP|${{ github.event.inputs.url }}|g" "$TEMP_DIR/manifest.plist"
           sed -i "s|put the bundle id of the app here|${{ github.event.inputs.bundleid }}|g" "$TEMP_DIR/manifest.plist"
           sed -i "s|put the app version here (the one in the plist, not the appstore, they dont match sometimes)|${{ github.event.inputs.version }}|g" "$TEMP_DIR/manifest.plist"
           sed -i "s|put the app display name here (what shows on ur homescreen)|${{ github.event.inputs.appname }}|g" "$TEMP_DIR/manifest.plist"
@@ -114,7 +114,4 @@ jobs:
             echo ""
             echo '```'
             echo "${ITMS_LINK}"
-            echo '```'
-            echo ""
-            echo "<button onclick=\"navigator.clipboard.writeText('${ITMS_LINK}')\">Copy Link</button>"
           } >> $GITHUB_STEP_SUMMARY
