@@ -7,16 +7,16 @@ on:
   workflow_dispatch:
     inputs:
       url:
-        description: "URL for link"
+        description: "Link for the signed IPA"
         required: true
       bundleid:
-        description: "what bundleID"
+        description: "the Bundle-ID of your App"
         required: true
       version:
-        description: "what version"
+        description: "the version your App is on"
         required: true
       appname:
-        description: "name of the app"
+        description: "the name of your App"
         required: true
 
 jobs:
