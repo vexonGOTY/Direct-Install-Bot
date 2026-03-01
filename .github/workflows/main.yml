@@ -32,12 +32,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout main branch
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # 2️⃣ Generate manifest in TEMP directory
       - name: Prepare manifest safely
         run: |
           mkdir temp
@@ -55,7 +53,6 @@ jobs:
           sed -i "s|put the app version here|${{ github.event.inputs.version }}|g" temp/manifest.plist
           sed -i "s|put the app display name here|${{ github.event.inputs.appname }}|g" temp/manifest.plist
 
-      # 3️⃣ Switch or create generated branch CLEAN
       - name: Checkout or create generated branch
         run: |
           git config user.name "github-actions"
@@ -68,7 +65,6 @@ jobs:
             git rm -rf .
           fi
 
-      # 4️⃣ Store manifest safely
       - name: Store manifest
         run: |
           CLEANUP=${{ github.event.inputs.cleanup_old }}
@@ -93,7 +89,6 @@ jobs:
           git commit -m "Generated manifest: $FINAL_PATH" || echo "No changes"
           git push origin generated
 
-      # 5️⃣ Generate install link
       - name: Create install link
         run: |
           RAW_URL="https://raw.githubusercontent.com/${{ github.repository }}/generated/${FINAL_PATH}"
@@ -101,8 +96,18 @@ jobs:
 
           echo "## Install Link" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "[INSTALL APP](${ITMS_LINK})" >> $GITHUB_STEP_SUMMARY
+
+          echo "[![INSTALL APP](https://img.shields.io/badge/INSTALL%20APP-blue?style=for-the-badge)](${ITMS_LINK})" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "---" >> $GITHUB_STEP_SUMMARY
-          echo "Copyable Link:" >> $GITHUB_STEP_SUMMARY
-          echo "\`${ITMS_LINK}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "### Copyable Link" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "${ITMS_LINK}" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "<button onclick=\"navigator.clipboard.writeText('${ITMS_LINK}')\">Copy Link</button>" >> $GITHUB_STEP_SUMMARY
