@@ -1,0 +1,108 @@
+name: Generate & Publish Manifest
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Direct link to signed IPA"
+        required: true
+      bundleid:
+        description: "Bundle-ID"
+        required: true
+      version:
+        description: "App Version"
+        required: true
+      appname:
+        description: "App Name"
+        required: true
+      cleanup_old:
+        description: "Replace previous manifest?"
+        type: boolean
+        required: true
+        default: false
+      folder_name:
+        description: "Folder name (used if replace is NOT selected)"
+        required: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ Checkout main branch
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 2️⃣ Generate manifest in TEMP directory
+      - name: Prepare manifest safely
+        run: |
+          mkdir temp
+
+          FILE=$(find . -name "manifest.plist" | head -n 1)
+          if [ -z "$FILE" ]; then
+            echo "manifest.plist not found"
+            exit 1
+          fi
+
+          cp "$FILE" temp/manifest.plist
+
+          sed -i "s|put ur SIGNED DIRECT link here|${{ github.event.inputs.url }}|g" temp/manifest.plist
+          sed -i "s|put the bundle id of the app here|${{ github.event.inputs.bundleid }}|g" temp/manifest.plist
+          sed -i "s|put the app version here|${{ github.event.inputs.version }}|g" temp/manifest.plist
+          sed -i "s|put the app display name here|${{ github.event.inputs.appname }}|g" temp/manifest.plist
+
+      # 3️⃣ Switch or create generated branch CLEAN
+      - name: Checkout or create generated branch
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+          if git ls-remote --exit-code --heads origin generated; then
+            git checkout generated
+          else
+            git checkout --orphan generated
+            git rm -rf .
+          fi
+
+      # 4️⃣ Store manifest safely
+      - name: Store manifest
+        run: |
+          CLEANUP=${{ github.event.inputs.cleanup_old }}
+          FOLDER="${{ github.event.inputs.folder_name }}"
+
+          if [ "$CLEANUP" = "true" ]; then
+            rm -rf *
+            mv temp/manifest.plist manifest.plist
+            FINAL_PATH="manifest.plist"
+          else
+            if [ -z "$FOLDER" ]; then
+              FOLDER=$(date +%Y-%m-%d_%H-%M-%S)
+            fi
+            mkdir -p "$FOLDER"
+            mv temp/manifest.plist "$FOLDER/manifest.plist"
+            FINAL_PATH="$FOLDER/manifest.plist"
+          fi
+
+          echo "FINAL_PATH=$FINAL_PATH" >> $GITHUB_ENV
+
+          git add .
+          git commit -m "Generated manifest: $FINAL_PATH" || echo "No changes"
+          git push origin generated
+
+      # 5️⃣ Generate install link
+      - name: Create install link
+        run: |
+          RAW_URL="https://raw.githubusercontent.com/${{ github.repository }}/generated/${FINAL_PATH}"
+          ITMS_LINK="itms-services://?action=download-manifest&url=${RAW_URL}"
+
+          echo "## Install Link" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "[INSTALL APP](${ITMS_LINK})" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "Copyable Link:" >> $GITHUB_STEP_SUMMARY
+          echo "\`${ITMS_LINK}\`" >> $GITHUB_STEP_SUMMARY
