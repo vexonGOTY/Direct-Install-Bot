@@ -24,7 +24,7 @@ on:
         required: true
         default: false
       folder_name:
-        description: "Folder name (used if replace is NOT selected)"
+        description: "Folder name"
         required: false
 
 jobs:
@@ -52,8 +52,8 @@ jobs:
 
           sed -i "s|put ur SIGNED DIRECT link here|${{ github.event.inputs.url }}|g" "$TEMP_DIR/manifest.plist"
           sed -i "s|put the bundle id of the app here|${{ github.event.inputs.bundleid }}|g" "$TEMP_DIR/manifest.plist"
-          sed -i "s|put the app version here|${{ github.event.inputs.version }}|g" "$TEMP_DIR/manifest.plist"
-          sed -i "s|put the app display name here|${{ github.event.inputs.appname }}|g" "$TEMP_DIR/manifest.plist"
+          sed -i "s|put the app version here (the one in the plist, not the appstore, they dont match sometimes)|${{ github.event.inputs.version }}|g" "$TEMP_DIR/manifest.plist"
+          sed -i "s|put the app display name here (what shows on ur homescreen)|${{ github.event.inputs.appname }}|g" "$TEMP_DIR/manifest.plist"
 
           echo "TEMP_DIR=$TEMP_DIR" >> $GITHUB_ENV
 
