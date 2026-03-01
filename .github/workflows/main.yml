@@ -1,0 +1,45 @@
+name: Generate Manifest Plist
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Link for the signed IPA"
+        required: true
+      bundleid:
+        description: "the Bundle-ID of your App"
+        required: true
+      version:
+        description: "the version your App is on"
+        required: true
+      appname:
+        description: "the name of your App"
+        required: true
+
+jobs:
+  generate-manifest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Copy original manifest
+        run: |
+          cp manifest.plist manifest_generated.plist
+
+      - name: Replace placeholders in copied manifest
+        run: |
+          sed -i "s|put ur SIGNED DIRECT link here|${{ github.event.inputs.url }}|g" manifest_generated.plist
+          sed -i "s|put the bundle id of the app here|${{ github.event.inputs.bundleid }}|g" manifest_generated.plist
+          sed -i "s|put the app version here (the one in the plist, not the appstore, they dont match sometimes)|${{ github.event.inputs.version }}|g" manifest_generated.plist
+          sed -i "s|put the app display name here (what shows on ur homescreen)|${{ github.event.inputs.appname }}|g" manifest_generated.plist
+
+      - name: Upload generated manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: manifest-generated
+          path: manifest_generated.plist
