@@ -52,7 +52,6 @@ jobs:
 
           cp "$FILE" "$TEMP_DIR/manifest.plist"
 
-          # Escape values for sed (important for &, / etc.)
           escape() {
             printf '%s\n' "$1" | sed -e 's/[\/&]/\\&/g'
           }
@@ -77,12 +76,14 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
-          if git ls-remote --exit-code --heads origin generated; then
+          if git show-ref --verify --quiet refs/heads/generated; then
             git checkout generated
             git pull origin generated
           else
             git checkout --orphan generated
             git rm -rf . || true
+            git commit --allow-empty -m "Initialize generated branch"
+            git push origin generated
           fi
 
       - name: Store manifest
@@ -99,7 +100,8 @@ jobs:
           fi
 
           if [ "$CLEANUP" = "true" ]; then
-            find . -mindepth 1 -delete
+            # Only remove tracked files (keeps .git safe)
+            git rm -rf . || true
             mv "$TEMP_DIR/manifest.plist" manifest.plist
             FINAL_PATH="manifest.plist"
           else
