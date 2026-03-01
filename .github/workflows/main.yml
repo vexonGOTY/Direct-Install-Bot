@@ -24,7 +24,7 @@ on:
         required: true
         default: false
       folder_name:
-        description: "Folder Name"
+        description: "Folder name (used if replace is NOT selected)"
         required: false
 
 jobs:
@@ -50,11 +50,10 @@ jobs:
 
           cp "$FILE" "$TEMP_DIR/manifest.plist"
 
-          # Ersetze Platzhalter komplett mit Eingaben zwischen ><
-          sed -i "s|>put ur SIGNED DIRECT link here<|>${{ github.event.inputs.url }}<|g" "$TEMP_DIR/manifest.plist"
-          sed -i "s|>put the bundle id of the app here<|>${{ github.event.inputs.bundleid }}<|g" "$TEMP_DIR/manifest.plist"
-          sed -i "s|>put the app version here (the one in the plist, not the appstore, they dont match sometimes)<|>${{ github.event.inputs.version }}<|g" "$TEMP_DIR/manifest.plist"
-          sed -i "s|>put the app display name here (what shows on ur homescreen)<|>${{ github.event.inputs.appname }}<|g" "$TEMP_DIR/manifest.plist"
+          sed -i "s|put ur SIGNED DIRECT link here|${{ github.event.inputs.url }}|g" "$TEMP_DIR/manifest.plist"
+          sed -i "s|put the bundle id of the app here|${{ github.event.inputs.bundleid }}|g" "$TEMP_DIR/manifest.plist"
+          sed -i "s|put the app version here|${{ github.event.inputs.version }}|g" "$TEMP_DIR/manifest.plist"
+          sed -i "s|put the app display name here|${{ github.event.inputs.appname }}|g" "$TEMP_DIR/manifest.plist"
 
           echo "TEMP_DIR=$TEMP_DIR" >> $GITHUB_ENV
 
@@ -103,7 +102,7 @@ jobs:
           git commit -m "Generated manifest: $FINAL_PATH" || echo "No changes"
           git push origin generated
 
-      - name: Create Copyable Link
+      - name: Create install link
         run: |
           set -e
 
@@ -111,11 +110,11 @@ jobs:
           ITMS_LINK="itms-services://?action=download-manifest&url=${RAW_URL}"
 
           {
-            echo "## Copyable Link"
+            echo "### Copyable Link"
             echo ""
-            # Textbox mit Link
-            echo "<pre id=\"installLink\" style=\"background:#f6f8fa;padding:12px;border-radius:6px;overflow:auto;\">${ITMS_LINK}</pre>"
+            echo '```'
+            echo "${ITMS_LINK}"
+            echo '```'
             echo ""
-            # Funktionierender Kopierbutton
-            echo "<button onclick=\"navigator.clipboard.writeText(document.getElementById('installLink').innerText)\" style=\"padding:8px 14px;border-radius:6px;border:1px solid #d0d7de;background:#ffffff;cursor:pointer;\">Copy</button>"
+            echo "<button onclick=\"navigator.clipboard.writeText('${ITMS_LINK}')\">Copy Link</button>"
           } >> $GITHUB_STEP_SUMMARY
