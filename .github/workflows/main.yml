@@ -104,13 +104,7 @@ jobs:
         run: |
           set -e
 
-          ENCODED_PATH=$(python3 - <<EOF
-import urllib.parse
-print(urllib.parse.quote("${FINAL_PATH}"))
-EOF
-)
-
-          RAW_URL="https://raw.githubusercontent.com/${{ github.repository }}/generated/${ENCODED_PATH}"
+          RAW_URL="https://raw.githubusercontent.com/${{ github.repository }}/generated/${FINAL_PATH}"
           ITMS_LINK="itms-services://?action=download-manifest&url=${RAW_URL}"
 
           {
