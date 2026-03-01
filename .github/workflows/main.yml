@@ -39,6 +39,7 @@ jobs:
       - name: Prepare manifest safely
         run: |
           set -e
+
           TEMP_DIR=$(mktemp -d)
 
           FILE=$(find . -name "manifest.plist" | head -n 1)
@@ -59,6 +60,7 @@ jobs:
       - name: Checkout or create generated branch
         run: |
           set -e
+
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
@@ -108,16 +110,17 @@ jobs:
           ITMS_LINK="itms-services://?action=download-manifest&url=${RAW_URL}"
 
           {
-            echo "<h2>Install App</h2>"
+            echo "## Install Link"
             echo ""
-            echo "<a href=\"${ITMS_LINK}\" style=\"display:inline-block;padding:14px 24px;font-size:16px;color:#ffffff;background-color:#0969da;border-radius:8px;text-decoration:none;font-weight:600;\">INSTALL APP</a>"
+            echo "[Install](${ITMS_LINK})"
             echo ""
-            echo "<hr>"
+            echo "---"
             echo ""
-            echo "<h3>Copyable Link</h3>"
+            echo "### Copyable Link"
             echo ""
-            echo "<code id=\"link\">${ITMS_LINK}</code>"
+            echo '```'
+            echo "${ITMS_LINK}"
+            echo '```'
             echo ""
-            echo "<br><br>"
-            echo "<button onclick=\"navigator.clipboard.writeText('${ITMS_LINK}')\" style=\"padding:8px 14px;border-radius:6px;border:1px solid #d0d7de;background:#ffffff;cursor:pointer;\">Copy Link</button>"
+            echo "<button onclick=\"navigator.clipboard.writeText('${ITMS_LINK}')\">Copy Link</button>"
           } >> $GITHUB_STEP_SUMMARY
