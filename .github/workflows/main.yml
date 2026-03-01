@@ -52,6 +52,7 @@ jobs:
 
           cp "$FILE" "$TEMP_DIR/manifest.plist"
 
+          # Escape values for sed (fixes PPP/link bug)
           escape() {
             printf '%s\n' "$1" | sed -e 's/[\/&]/\\&/g'
           }
@@ -68,7 +69,7 @@ jobs:
 
           echo "TEMP_DIR=$TEMP_DIR" >> $GITHUB_ENV
 
-      - name: Checkout or create generated branch
+      - name: Checkout or sync generated branch
         shell: bash
         run: |
           set -euo pipefail
@@ -76,10 +77,12 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
-          if git show-ref --verify --quiet refs/heads/generated; then
-            git checkout generated
-            git pull origin generated
+          if git ls-remote --exit-code --heads origin generated; then
+            echo "Branch exists — syncing"
+            git fetch origin generated
+            git checkout -B generated origin/generated
           else
+            echo "Branch does not exist — creating"
             git checkout --orphan generated
             git rm -rf . || true
             git commit --allow-empty -m "Initialize generated branch"
@@ -100,7 +103,6 @@ jobs:
           fi
 
           if [ "$CLEANUP" = "true" ]; then
-            # Only remove tracked files (keeps .git safe)
             git rm -rf . || true
             mv "$TEMP_DIR/manifest.plist" manifest.plist
             FINAL_PATH="manifest.plist"
