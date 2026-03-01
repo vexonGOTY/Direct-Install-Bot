@@ -38,7 +38,9 @@ jobs:
 
       - name: Prepare manifest safely
         run: |
-          mkdir temp
+          set -e
+
+          TEMP_DIR=$(mktemp -d)
 
           FILE=$(find . -name "manifest.plist" | head -n 1)
           if [ -z "$FILE" ]; then
@@ -46,15 +48,19 @@ jobs:
             exit 1
           fi
 
-          cp "$FILE" temp/manifest.plist
+          cp "$FILE" "$TEMP_DIR/manifest.plist"
 
-          sed -i "s|put ur SIGNED DIRECT link here|${{ github.event.inputs.url }}|g" temp/manifest.plist
-          sed -i "s|put the bundle id of the app here|${{ github.event.inputs.bundleid }}|g" temp/manifest.plist
-          sed -i "s|put the app version here|${{ github.event.inputs.version }}|g" temp/manifest.plist
-          sed -i "s|put the app display name here|${{ github.event.inputs.appname }}|g" temp/manifest.plist
+          sed -i "s|put ur SIGNED DIRECT link here|${{ github.event.inputs.url }}|g" "$TEMP_DIR/manifest.plist"
+          sed -i "s|put the bundle id of the app here|${{ github.event.inputs.bundleid }}|g" "$TEMP_DIR/manifest.plist"
+          sed -i "s|put the app version here|${{ github.event.inputs.version }}|g" "$TEMP_DIR/manifest.plist"
+          sed -i "s|put the app display name here|${{ github.event.inputs.appname }}|g" "$TEMP_DIR/manifest.plist"
+
+          echo "TEMP_DIR=$TEMP_DIR" >> $GITHUB_ENV
 
       - name: Checkout or create generated branch
         run: |
+          set -e
+
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
@@ -67,19 +73,26 @@ jobs:
 
       - name: Store manifest
         run: |
+          set -e
+
           CLEANUP=${{ github.event.inputs.cleanup_old }}
           FOLDER="${{ github.event.inputs.folder_name }}"
 
+          if [ ! -f "$TEMP_DIR/manifest.plist" ]; then
+            echo "Prepared manifest not found."
+            exit 1
+          fi
+
           if [ "$CLEANUP" = "true" ]; then
             rm -rf *
-            mv temp/manifest.plist manifest.plist
+            mv "$TEMP_DIR/manifest.plist" manifest.plist
             FINAL_PATH="manifest.plist"
           else
             if [ -z "$FOLDER" ]; then
               FOLDER=$(date +%Y-%m-%d_%H-%M-%S)
             fi
             mkdir -p "$FOLDER"
-            mv temp/manifest.plist "$FOLDER/manifest.plist"
+            mv "$TEMP_DIR/manifest.plist" "$FOLDER/manifest.plist"
             FINAL_PATH="$FOLDER/manifest.plist"
           fi
 
@@ -91,23 +104,23 @@ jobs:
 
       - name: Create install link
         run: |
+          set -e
+
           RAW_URL="https://raw.githubusercontent.com/${{ github.repository }}/generated/${FINAL_PATH}"
           ITMS_LINK="itms-services://?action=download-manifest&url=${RAW_URL}"
 
-          echo "## Install Link" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          echo "[![INSTALL APP](https://img.shields.io/badge/INSTALL%20APP-blue?style=for-the-badge)](${ITMS_LINK})" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "---" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          echo "### Copyable Link" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "${ITMS_LINK}" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          echo "<button onclick=\"navigator.clipboard.writeText('${ITMS_LINK}')\">Copy Link</button>" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## Install Link"
+            echo ""
+            echo "[![INSTALL APP](https://img.shields.io/badge/INSTALL%20APP-blue?style=for-the-badge)](${ITMS_LINK})"
+            echo ""
+            echo "---"
+            echo ""
+            echo "### Copyable Link"
+            echo ""
+            echo '```'
+            echo "${ITMS_LINK}"
+            echo '```'
+            echo ""
+            echo "<button onclick=\"navigator.clipboard.writeText('${ITMS_LINK}')\">Copy Link</button>"
+          } >> $GITHUB_STEP_SUMMARY
