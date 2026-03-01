@@ -32,17 +32,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Prepare manifest safely
+        shell: bash
         run: |
-          set -e
+          set -euo pipefail
 
           TEMP_DIR=$(mktemp -d)
 
-          FILE=$(find . -name "manifest.plist" | head -n 1)
+          FILE=$(find . -type f -name "manifest.plist" | head -n 1)
           if [ -z "$FILE" ]; then
             echo "manifest.plist not found"
             exit 1
@@ -50,32 +52,45 @@ jobs:
 
           cp "$FILE" "$TEMP_DIR/manifest.plist"
 
-          sed -i "s|PPP|${{ github.event.inputs.url }}|g" "$TEMP_DIR/manifest.plist"
-          sed -i "s|put the bundle id of the app here|${{ github.event.inputs.bundleid }}|g" "$TEMP_DIR/manifest.plist"
-          sed -i "s|put the app version here (the one in the plist, not the appstore, they dont match sometimes)|${{ github.event.inputs.version }}|g" "$TEMP_DIR/manifest.plist"
-          sed -i "s|put the app display name here (what shows on ur homescreen)|${{ github.event.inputs.appname }}|g" "$TEMP_DIR/manifest.plist"
+          # Escape values for sed (important for &, / etc.)
+          escape() {
+            printf '%s\n' "$1" | sed -e 's/[\/&]/\\&/g'
+          }
+
+          URL_ESCAPED=$(escape "${{ github.event.inputs.url }}")
+          BUNDLE_ESCAPED=$(escape "${{ github.event.inputs.bundleid }}")
+          VERSION_ESCAPED=$(escape "${{ github.event.inputs.version }}")
+          APPNAME_ESCAPED=$(escape "${{ github.event.inputs.appname }}")
+
+          sed -i "s|PPP|$URL_ESCAPED|g" "$TEMP_DIR/manifest.plist"
+          sed -i "s|put the bundle id of the app here|$BUNDLE_ESCAPED|g" "$TEMP_DIR/manifest.plist"
+          sed -i "s|put the app version here (the one in the plist, not the appstore, they dont match sometimes)|$VERSION_ESCAPED|g" "$TEMP_DIR/manifest.plist"
+          sed -i "s|put the app display name here (what shows on ur homescreen)|$APPNAME_ESCAPED|g" "$TEMP_DIR/manifest.plist"
 
           echo "TEMP_DIR=$TEMP_DIR" >> $GITHUB_ENV
 
       - name: Checkout or create generated branch
+        shell: bash
         run: |
-          set -e
+          set -euo pipefail
 
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
 
           if git ls-remote --exit-code --heads origin generated; then
             git checkout generated
+            git pull origin generated
           else
             git checkout --orphan generated
-            git rm -rf .
+            git rm -rf . || true
           fi
 
       - name: Store manifest
+        shell: bash
         run: |
-          set -e
+          set -euo pipefail
 
-          CLEANUP=${{ github.event.inputs.cleanup_old }}
+          CLEANUP="${{ github.event.inputs.cleanup_old }}"
           FOLDER="${{ github.event.inputs.folder_name }}"
 
           if [ ! -f "$TEMP_DIR/manifest.plist" ]; then
@@ -84,7 +99,7 @@ jobs:
           fi
 
           if [ "$CLEANUP" = "true" ]; then
-            rm -rf *
+            find . -mindepth 1 -delete
             mv "$TEMP_DIR/manifest.plist" manifest.plist
             FINAL_PATH="manifest.plist"
           else
@@ -99,12 +114,18 @@ jobs:
           echo "FINAL_PATH=$FINAL_PATH" >> $GITHUB_ENV
 
           git add .
-          git commit -m "Generated manifest: $FINAL_PATH" || echo "No changes"
-          git push origin generated
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Generated manifest: $FINAL_PATH"
+            git push origin generated
+          fi
 
       - name: Create install link
+        shell: bash
         run: |
-          set -e
+          set -euo pipefail
 
           RAW_URL="https://raw.githubusercontent.com/${{ github.repository }}/generated/${FINAL_PATH}"
           ITMS_LINK="itms-services://?action=download-manifest&url=${RAW_URL}"
@@ -114,4 +135,5 @@ jobs:
             echo ""
             echo '```'
             echo "${ITMS_LINK}"
-          } >> $GITHUB_STEP_SUMMARY
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
