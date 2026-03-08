@@ -1,3 +1,6 @@
 
 # Direct-Install-Bot
-Automates the direct install for flero
+Automates direct install links
+-# for private use only
+-# if you want to use for yourself clone the repo)
+
