@@ -1,18 +1,13 @@
 (() => {
   const STORAGE_KEYS = {
-    repo: "direct-install-bot:githubRepo",
-    token: "direct-install-bot:githubToken",
     history: "direct-install-bot:linksHistory",
   };
 
+  const OWNER = "vexonGOTY";
+  const REPO = "Direct-Install-Bot";
+  const GITHUB_TOKEN = window.DIRECT_INSTALL_BOT_TOKEN || "";
+
   const els = {
-    settingsToggle: document.getElementById("settingsToggle"),
-    settingsPanel: document.getElementById("settingsPanel"),
-    settingsForm: document.getElementById("settingsForm"),
-    settingsReset: document.getElementById("settingsReset"),
-    githubRepo: document.getElementById("githubRepo"),
-    githubToken: document.getElementById("githubToken"),
-    toggleTokenVisibility: document.getElementById("toggleTokenVisibility"),
     githubRepoDisplay: document.getElementById("githubRepoDisplay"),
 
     appForm: document.getElementById("appForm"),
@@ -23,6 +18,7 @@
     ipaFile: document.getElementById("ipaFile"),
     ipaFileLabel: document.getElementById("ipaFileLabel"),
     ipaUrl: document.getElementById("ipaUrl"),
+    useCustomUrl: document.getElementById("useCustomUrl"),
 
     cleanupToggle: document.getElementById("cleanupToggle"),
     cleanupBadge: document.getElementById("cleanupBadge"),
@@ -46,31 +42,6 @@
     } catch {
       return fallback;
     }
-  }
-
-  function loadSettings() {
-    const repo = localStorage.getItem(STORAGE_KEYS.repo) || "";
-    const token = localStorage.getItem(STORAGE_KEYS.token) || "";
-
-    if (els.githubRepo) els.githubRepo.value = repo;
-    if (els.githubToken) els.githubToken.value = token;
-
-    updateRepoDisplay(repo);
-  }
-
-  function updateRepoDisplay(repo) {
-    const display = repo || "not set";
-    if (els.githubRepoDisplay) {
-      els.githubRepoDisplay.textContent = display;
-    }
-    if (els.githubContext) {
-      els.githubContext.textContent = `Repository: ${display}`;
-    }
-  }
-
-  function persistSettings(repo, token) {
-    localStorage.setItem(STORAGE_KEYS.repo, repo.trim());
-    localStorage.setItem(STORAGE_KEYS.token, token.trim());
   }
 
   function loadHistory() {
@@ -126,10 +97,13 @@
     wrapper.appendChild(badge);
     wrapper.appendChild(body);
 
+    // Set transition up front so later opacity/transform changes animate.
+    wrapper.style.transition =
+      "opacity 150ms ease-out, transform 150ms ease-out";
+
     els.toastRoot.appendChild(wrapper);
     setTimeout(() => {
       wrapper.classList.add("opacity-0", "-translate-y-1");
-      wrapper.style.transition = "opacity 150ms ease-out, transform 150ms ease-out";
       setTimeout(() => {
         wrapper.remove();
       }, 160);
@@ -157,15 +131,6 @@
       els.submitButton.innerHTML =
         '<span class="i-lucide-rocket w-4 h-4"></span><span>Dispatch Workflow</span>';
     }
-  }
-
-  function parseRepo(value) {
-    const trimmed = value.trim();
-    const [owner, repo] = trimmed.split("/");
-    if (!owner || !repo) {
-      throw new Error("Repository must be in the form owner/repo.");
-    }
-    return { owner, repo };
   }
 
   async function uploadToFilebin(file) {
@@ -225,7 +190,7 @@
         version,
         appname: appName,
         cleanup_old: cleanupOld ? "true" : "false",
-        folder_name: folderName || "",
+        folder_name: cleanupOld ? "" : folderName || "",
       },
     };
 
@@ -255,14 +220,22 @@
   }
 
   function computeInstallLink({ owner, repo, cleanupOld, folderName }) {
+    const encodedOwner = encodeURIComponent(owner);
+    const encodedRepo = encodeURIComponent(repo);
+
     let manifestPath;
+    let encodedManifestPath;
+
     if (cleanupOld) {
       manifestPath = "manifest.plist";
+      encodedManifestPath = "manifest.plist";
     } else {
       manifestPath = `${folderName}/manifest.plist`;
+      const encodedFolder = encodeURIComponent(folderName);
+      encodedManifestPath = `${encodedFolder}/manifest.plist`;
     }
 
-    const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/generated/${manifestPath}`;
+    const rawUrl = `https://raw.githubusercontent.com/${encodedOwner}/${encodedRepo}/generated/${encodedManifestPath}`;
     const itmsLink =
       "itms-services://?action=download-manifest&url=" + rawUrl;
 
@@ -382,80 +355,6 @@
       });
   }
 
-  function initSettingsPanel() {
-    loadSettings();
-
-    if (els.settingsToggle && els.settingsPanel) {
-      els.settingsToggle.addEventListener("click", () => {
-        const current = els.settingsPanel.dataset.state || "visible";
-        const next = current === "visible" ? "hidden" : "visible";
-        els.settingsPanel.dataset.state = next;
-      });
-    }
-
-    if (els.settingsForm) {
-      els.settingsForm.addEventListener("submit", (event) => {
-        event.preventDefault();
-        const repo = els.githubRepo.value.trim();
-        const token = els.githubToken.value.trim();
-
-        if (!repo || !token) {
-          createToast({
-            title: "Missing settings",
-            description: "Repository and token are both required.",
-            variant: "error",
-          });
-          return;
-        }
-
-        try {
-          parseRepo(repo);
-        } catch (err) {
-          createToast({
-            title: "Invalid repository",
-            description: err.message,
-            variant: "error",
-          });
-          return;
-        }
-
-        persistSettings(repo, token);
-        updateRepoDisplay(repo);
-
-        createToast({
-          title: "Settings saved",
-          description: "Repository and token stored in localStorage for this browser.",
-          variant: "success",
-        });
-      });
-    }
-
-    if (els.settingsReset) {
-      els.settingsReset.addEventListener("click", () => {
-        localStorage.removeItem(STORAGE_KEYS.repo);
-        localStorage.removeItem(STORAGE_KEYS.token);
-        if (els.githubRepo) els.githubRepo.value = "";
-        if (els.githubToken) els.githubToken.value = "";
-        updateRepoDisplay("");
-        createToast({
-          title: "Settings cleared",
-          description: "Local repository and token settings have been removed.",
-          variant: "success",
-        });
-      });
-    }
-
-    if (els.toggleTokenVisibility && els.githubToken) {
-      els.toggleTokenVisibility.addEventListener("click", () => {
-        const currentType = els.githubToken.type;
-        const nextType = currentType === "password" ? "text" : "password";
-        els.githubToken.type = nextType;
-        els.toggleTokenVisibility.textContent =
-          nextType === "password" ? "Show" : "Hide";
-      });
-    }
-  }
-
   function initCleanupToggle() {
     if (!els.cleanupToggle || !els.cleanupBadge) return;
 
@@ -508,6 +407,20 @@
     });
   }
 
+  function initCustomUrlToggle() {
+    if (!els.useCustomUrl || !els.ipaUrl) return;
+
+    const sync = () => {
+      const enabled = els.useCustomUrl.checked;
+      els.ipaUrl.disabled = !enabled;
+      els.ipaUrl.classList.toggle("opacity-60", !enabled);
+      els.ipaUrl.classList.toggle("cursor-not-allowed", !enabled);
+    };
+
+    sync();
+    els.useCustomUrl.addEventListener("change", sync);
+  }
+
   function formatTimestamp(timestamp) {
     const date = new Date(timestamp);
     if (Number.isNaN(date.getTime())) return "";
@@ -526,30 +439,15 @@
     els.appForm.addEventListener("submit", async (event) => {
       event.preventDefault();
 
-      const repo = (els.githubRepo && els.githubRepo.value) || localStorage.getItem(STORAGE_KEYS.repo) || "";
-      const token =
-        (els.githubToken && els.githubToken.value) ||
-        localStorage.getItem(STORAGE_KEYS.token) ||
-        "";
+      const owner = OWNER;
+      const repoName = REPO;
+      const token = GITHUB_TOKEN;
 
-      if (!repo || !token) {
+      if (!token) {
         createToast({
-          title: "Settings required",
-          description: "Please configure your GitHub repository and token first.",
-          variant: "error",
-        });
-        return;
-      }
-
-      let owner, repoName;
-      try {
-        const parsed = parseRepo(repo);
-        owner = parsed.owner;
-        repoName = parsed.repo;
-      } catch (err) {
-        createToast({
-          title: "Invalid repository",
-          description: err.message,
+          title: "Token not configured",
+          description:
+            "Set window.DIRECT_INSTALL_BOT_TOKEN in a script tag before using the dashboard.",
           variant: "error",
         });
         return;
@@ -584,16 +482,30 @@
         els.ipaFile.files && els.ipaFile.files.length
           ? els.ipaFile.files[0]
           : null;
-      let url = els.ipaUrl.value.trim();
+      const useCustomUrl = els.useCustomUrl && els.useCustomUrl.checked;
+      let url = "";
 
-      if (!file && !url) {
+      if (!file && !useCustomUrl) {
         createToast({
           title: "Missing IPA source",
           description:
-            "Upload a signed IPA file or provide a direct URL to an existing IPA.",
+            "Upload a signed IPA file or enable and provide a custom IPA URL.",
           variant: "error",
         });
         return;
+      }
+
+      if (!file && useCustomUrl) {
+        url = els.ipaUrl.value.trim();
+        if (!url) {
+          createToast({
+            title: "Missing custom URL",
+            description:
+              "Enable and provide a direct IPA URL, or upload a signed IPA file.",
+            variant: "error",
+          });
+          return;
+        }
       }
 
       toggleSubmitting(true);
@@ -663,12 +575,20 @@
   }
 
   function init() {
-    initSettingsPanel();
     initCleanupToggle();
     initFileInput();
     initHistoryControls();
+    initCustomUrlToggle();
     initForm();
     setStatus("Idle", "idle");
+
+    const fixedRepoDisplay = `${OWNER}/${REPO}`;
+    if (els.githubRepoDisplay) {
+      els.githubRepoDisplay.textContent = fixedRepoDisplay;
+    }
+    if (els.githubContext) {
+      els.githubContext.textContent = `Repository: ${fixedRepoDisplay}`;
+    }
   }
 
   if (document.readyState === "loading") {
