@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Direct Install Bot Dashboard</title>
+    <!-- Tailwind via CDN (no build step, fine for Pages) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body class="h-full bg-slate-950 text-slate-100">
+    <div class="min-h-screen flex flex-col">
+      <!-- Top bar -->
+      <header class="w-full border-b border-slate-800/70 bg-slate-950/80 backdrop-blur">
+        <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+          <div class="flex items-center gap-2">
+            <span class="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-500/20 text-indigo-300 text-xs font-semibold border border-indigo-500/40">
+              DI
+            </span>
+            <div>
+              <h1 class="text-sm font-semibold tracking-wide text-slate-100">
+                Direct Install Bot
+              </h1>
+              <p class="text-[11px] text-slate-400 leading-tight">
+                iOS manifest generator · GitHub Actions
+              </p>
+            </div>
+          </div>
+
+          <button
+            id="settingsToggle"
+            class="inline-flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-800/80 hover:border-slate-700 transition-colors"
+            type="button"
+          >
+            <span class="i-lucide-settings w-3.5 h-3.5"></span>
+            <span>Settings</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Main content -->
+      <main class="flex-1 flex items-center justify-center px-4 py-8">
+        <div class="w-full max-w-5xl grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] items-start">
+          <!-- App card -->
+          <section
+            class="relative overflow-hidden rounded-2xl border border-slate-800/80 bg-gradient-to-b from-slate-950 via-slate-950 to-slate-900/70 shadow-[0_24px_80px_rgba(15,23,42,0.9)]"
+          >
+            <div class="pointer-events-none absolute inset-x-16 -top-40 h-72 rounded-full bg-indigo-500/10 blur-3xl"></div>
+            <div class="relative p-6 sm:p-8">
+              <header class="mb-6 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 class="text-base sm:text-lg font-semibold text-slate-50 flex items-center gap-2">
+                    Generate iOS Install Manifest
+                    <span
+                      class="inline-flex items-center rounded-full border border-emerald-400/40 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-emerald-300"
+                    >
+                      Client-side · GitHub Actions
+                    </span>
+                  </h2>
+                  <p class="mt-1 text-xs text-slate-400 max-w-xl">
+                    Upload a signed IPA or provide a direct URL, then dispatch the
+                    <code class="text-[11px] text-slate-300">main.yml</code> workflow to publish an
+                    install link from the <code class="text-[11px] text-slate-300">generated</code> branch.
+                  </p>
+                </div>
+              </header>
+
+              <!-- Status / progress -->
+              <div class="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex items-center gap-2 text-[11px] text-slate-400">
+                  <div class="relative flex h-1.5 w-16 overflow-hidden rounded-full bg-slate-800/80">
+                    <div id="statusBar" class="status-bar"></div>
+                  </div>
+                  <span id="statusLabel">Idle</span>
+                </div>
+                <p id="githubContext" class="text-[11px] text-slate-500">
+                  Repository: <span class="font-mono text-slate-300/80" id="githubRepoDisplay">not set</span>
+                </p>
+              </div>
+
+              <!-- Form -->
+              <form id="appForm" class="space-y-5" autocomplete="off">
+                <!-- App meta -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div class="space-y-1.5">
+                    <label for="appName" class="text-xs font-medium text-slate-200">App Name</label>
+                    <input
+                      id="appName"
+                      name="appName"
+                      type="text"
+                      required
+                      class="block w-full rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
+                      placeholder="Example: My Beta App"
+                    />
+                  </div>
+                  <div class="space-y-1.5">
+                    <label for="bundleId" class="text-xs font-medium text-slate-200">Bundle ID</label>
+                    <input
+                      id="bundleId"
+                      name="bundleId"
+                      type="text"
+                      required
+                      class="block w-full rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
+                      placeholder="com.example.app"
+                    />
+                  </div>
+                  <div class="space-y-1.5">
+                    <label for="version" class="text-xs font-medium text-slate-200">Version</label>
+                    <input
+                      id="version"
+                      name="version"
+                      type="text"
+                      required
+                      class="block w-full rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
+                      placeholder="1.0.0"
+                    />
+                  </div>
+                  <div class="space-y-1.5">
+                    <div class="flex items-center justify-between gap-2">
+                      <label for="folderName" class="text-xs font-medium text-slate-200">Folder Name</label>
+                      <span class="text-[10px] text-slate-500">
+                        Required when keeping history
+                      </span>
+                    </div>
+                    <input
+                      id="folderName"
+                      name="folderName"
+                      type="text"
+                      class="block w-full rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
+                      placeholder="beta-1.0.0"
+                    />
+                  </div>
+                </div>
+
+                <!-- IPA source -->
+                <div class="grid gap-4 sm:grid-cols-2">
+                  <div class="space-y-1.5">
+                    <div class="flex items-center justify-between gap-2">
+                      <label class="text-xs font-medium text-slate-200">IPA Upload</label>
+                      <span class="text-[10px] text-slate-500">Uploaded to Filebin</span>
+                    </div>
+                    <label
+                      for="ipaFile"
+                      class="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-dashed border-slate-700/90 bg-slate-950/60 px-3 py-2 text-xs text-slate-300 hover:border-indigo-500/70 hover:bg-slate-900/70 transition-colors"
+                    >
+                      <span class="truncate" id="ipaFileLabel">Choose signed .ipa file</span>
+                      <span
+                        class="inline-flex items-center rounded-md border border-slate-700 bg-slate-900/90 px-2 py-1 text-[10px] font-medium text-slate-200"
+                      >
+                        Browse
+                      </span>
+                      <input id="ipaFile" name="ipaFile" type="file" accept=".ipa" class="hidden" />
+                    </label>
+                    <p class="text-[11px] text-slate-500">
+                      If set, this takes precedence over the direct URL.
+                    </p>
+                  </div>
+
+                  <div class="space-y-1.5">
+                    <label for="ipaUrl" class="text-xs font-medium text-slate-200">Direct IPA URL</label>
+                    <input
+                      id="ipaUrl"
+                      name="ipaUrl"
+                      type="url"
+                      class="block w-full rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
+                      placeholder="https://..."
+                    />
+                    <p class="text-[11px] text-slate-500">
+                      Optional if uploading a file. Must be a direct link to a signed IPA.
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Options & submit -->
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div class="flex items-center gap-3">
+                    <button
+                      id="cleanupToggle"
+                      type="button"
+                      class="cleanup-toggle data-[state=off]:bg-slate-800/80 data-[state=off]:border-slate-700 data-[state=on]:bg-rose-500/20 data-[state=on]:border-rose-400/70"
+                      data-state="off"
+                      aria-pressed="false"
+                    >
+                      <span class="cleanup-thumb"></span>
+                    </button>
+                    <div class="leading-tight">
+                      <div class="flex items-center gap-1.5 text-xs font-medium text-slate-200">
+                        Replace previous manifest
+                        <span
+                          id="cleanupBadge"
+                          class="inline-flex items-center rounded-full border border-emerald-400/40 bg-emerald-500/10 px-2 py-[2px] text-[9px] font-medium uppercase tracking-wide text-emerald-300"
+                        >
+                          Keep history
+                        </span>
+                      </div>
+                      <p class="text-[11px] text-slate-500">
+                        When off, a <span class="font-mono text-slate-300/90">folder_name</span> is required so you can keep multiple manifests.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    id="submitButton"
+                    type="submit"
+                    class="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-slate-50 shadow-lg shadow-indigo-500/30 hover:bg-indigo-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <span class="i-lucide-rocket w-4 h-4"></span>
+                    <span>Dispatch Workflow</span>
+                  </button>
+                </div>
+              </form>
+
+              <!-- Generated links -->
+              <section class="mt-7 border-t border-slate-800/70 pt-4">
+                <header class="flex items-center justify-between gap-2 mb-2.5">
+                  <h3 class="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
+                    Recent install links
+                    <span
+                      class="inline-flex items-center rounded-full bg-slate-800/80 px-1.5 py-[1px] text-[9px] font-medium text-slate-400"
+                      id="linksCountBadge"
+                    >
+                      0
+                    </span>
+                  </h3>
+                  <button
+                    id="clearHistory"
+                    type="button"
+                    class="text-[11px] text-slate-500 hover:text-rose-300 hover:underline underline-offset-2"
+                  >
+                    Clear list
+                  </button>
+                </header>
+                <div
+                  id="linksEmptyState"
+                  class="rounded-lg border border-dashed border-slate-800/80 bg-slate-950/60 px-3.5 py-3 text-[11px] text-slate-500"
+                >
+                  No manifests yet. Generate one to see the install links here.
+                </div>
+                <ul
+                  id="linksList"
+                  class="mt-1 space-y-2.5 text-[11px] text-slate-50 max-h-60 overflow-y-auto pr-1.5 custom-scrollbar"
+                ></ul>
+              </section>
+            </div>
+          </section>
+
+          <!-- Settings card -->
+          <aside
+            id="settingsPanel"
+            class="relative rounded-2xl border border-slate-800/80 bg-slate-950/90 shadow-[0_18px_60px_rgba(15,23,42,0.9)] p-5 sm:p-6 max-h-[480px] overflow-hidden data-[state=hidden]:pointer-events-none data-[state=hidden]:opacity-0 data-[state=hidden]:translate-y-1 data-[state=visible]:opacity-100 data-[state=visible]:translate-y-0 transition-all duration-200"
+            data-state="visible"
+          >
+            <div class="pointer-events-none absolute inset-x-8 -top-20 h-40 rounded-full bg-slate-700/20 blur-3xl"></div>
+            <div class="relative space-y-4">
+              <header class="space-y-1">
+                <h2 class="text-sm font-semibold text-slate-50 flex items-center gap-2">
+                  Connection Settings
+                  <span
+                    class="inline-flex items-center rounded-full border border-amber-400/40 bg-amber-500/10 px-2 py-[2px] text-[9px] font-medium uppercase tracking-wide text-amber-200"
+                  >
+                    Token stored locally
+                  </span>
+                </h2>
+                <p class="text-[11px] text-slate-400">
+                  Values are stored in <code class="text-[11px] text-slate-200">localStorage</code> only on this browser.
+                  Use a fine-grained token and keep this page private.
+                </p>
+              </header>
+
+              <form id="settingsForm" class="space-y-3.5">
+                <div class="space-y-1.5">
+                  <label for="githubRepo" class="text-xs font-medium text-slate-200">
+                    GitHub Repository
+                  </label>
+                  <input
+                    id="githubRepo"
+                    name="githubRepo"
+                    type="text"
+                    required
+                    class="block w-full rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
+                    placeholder="owner/repo (e.g. vexonGOTY/Direct-Install-Bot)"
+                  />
+                </div>
+
+                <div class="space-y-1.5">
+                  <div class="flex items-center justify-between gap-2">
+                    <label for="githubToken" class="text-xs font-medium text-slate-200">
+                      GitHub Personal Access Token
+                    </label>
+                    <button
+                      id="toggleTokenVisibility"
+                      type="button"
+                      class="text-[11px] text-slate-500 hover:text-slate-200"
+                    >
+                      Show
+                    </button>
+                  </div>
+                  <input
+                    id="githubToken"
+                    name="githubToken"
+                    type="password"
+                    required
+                    class="block w-full rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
+                    placeholder="ghp_..."
+                  />
+                  <p class="text-[10px] text-slate-500 leading-snug">
+                    Recommended: fine-grained token with
+                    <span class="font-mono text-slate-300/90">workflows: read &amp; write</span>
+                    access on this repo only.
+                  </p>
+                </div>
+
+                <div class="flex items-center justify-between gap-3 pt-1">
+                  <button
+                    id="settingsReset"
+                    type="button"
+                    class="text-[11px] text-slate-500 hover:text-slate-200 hover:underline underline-offset-2"
+                  >
+                    Reset
+                  </button>
+                  <button
+                    type="submit"
+                    class="inline-flex items-center justify-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-900 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
+                  >
+                    <span class="i-lucide-save w-3.5 h-3.5"></span>
+                    <span>Save Settings</span>
+                  </button>
+                </div>
+              </form>
+
+              <section class="pt-1 border-t border-slate-800/70 mt-3">
+                <h3 class="text-[11px] font-semibold text-slate-300 mb-1.5">
+                  How it works
+                </h3>
+                <ol class="space-y-1.5 text-[11px] text-slate-400">
+                  <li class="flex gap-2">
+                    <span class="mt-[2px] inline-flex h-4 w-4 items-center justify-center rounded-full bg-slate-800 text-[9px] text-slate-200">1</span>
+                    <span>Fill in repository + token and save to localStorage.</span>
+                  </li>
+                  <li class="flex gap-2">
+                    <span class="mt-[2px] inline-flex h-4 w-4 items-center justify-center rounded-full bg-slate-800 text-[9px] text-slate-200">2</span>
+                    <span>Upload an IPA (to Filebin) or provide a direct URL.</span>
+                  </li>
+                  <li class="flex gap-2">
+                    <span class="mt-[2px] inline-flex h-4 w-4 items-center justify-center rounded-full bg-slate-800 text-[9px] text-slate-200">3</span>
+                    <span>Dispatch the <code class="text-[10px] text-slate-200">main.yml</code> workflow which commits the manifest to the <code class="text-[10px] text-slate-200">generated</code> branch.</span>
+                  </li>
+                  <li class="flex gap-2">
+                    <span class="mt-[2px] inline-flex h-4 w-4 items-center justify-center rounded-full bg-slate-800 text-[9px] text-slate-200">4</span>
+                    <span>Use the generated <code class="text-[10px] text-slate-200">itms-services://</code> links to install on device.</span>
+                  </li>
+                </ol>
+              </section>
+            </div>
+          </aside>
+        </div>
+      </main>
+
+      <!-- Notifications -->
+      <div id="toastRoot" class="fixed inset-x-0 top-3 z-50 flex flex-col items-center gap-2 px-3 pointer-events-none"></div>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
+
