@@ -1,13 +1,19 @@
 (() => {
   const STORAGE_KEYS = {
     history: "direct-install-bot:linksHistory",
+    token: "direct-install-bot:githubToken",
+    auth: "direct-install-bot:authGate",
   };
 
   const OWNER = "vexonGOTY";
   const REPO = "Direct-Install-Bot";
-  const GITHUB_TOKEN = window.DIRECT_INSTALL_BOT_TOKEN || "";
 
   const els = {
+    loginScreen: document.getElementById("loginScreen"),
+    loginCard: document.getElementById("loginCard"),
+    loginPassword: document.getElementById("loginPassword"),
+    loginButton: document.getElementById("loginButton"),
+
     githubRepoDisplay: document.getElementById("githubRepoDisplay"),
 
     appForm: document.getElementById("appForm"),
@@ -23,6 +29,8 @@
     cleanupToggle: document.getElementById("cleanupToggle"),
     cleanupBadge: document.getElementById("cleanupBadge"),
     submitButton: document.getElementById("submitButton"),
+
+    githubToken: document.getElementById("githubToken"),
 
     statusBar: document.getElementById("statusBar"),
     statusLabel: document.getElementById("statusLabel"),
@@ -53,6 +61,17 @@
 
   function persistHistory(items) {
     localStorage.setItem(STORAGE_KEYS.history, JSON.stringify(items));
+  }
+
+  function loadToken() {
+    const token = localStorage.getItem(STORAGE_KEYS.token) || "";
+    if (els.githubToken) {
+      els.githubToken.value = token;
+    }
+  }
+
+  function persistToken(token) {
+    localStorage.setItem(STORAGE_KEYS.token, token.trim());
   }
 
   function createToast({ title, description, variant = "info" }) {
@@ -140,12 +159,11 @@
       "-" +
       Math.random().toString(36).slice(2, 8);
 
-    const resp = await fetch("https://filebin.net/", {
-      method: "POST",
-      headers: {
-        bin: binId,
-        filename: file.name,
-      },
+    const safeName = encodeURIComponent(file.name);
+    const endpoint = `https://filebin.net/${binId}/${safeName}`;
+
+    const resp = await fetch(endpoint, {
+      method: "PUT",
       body: file,
     });
 
@@ -158,13 +176,7 @@
       );
     }
 
-    const json = await resp.json().catch(() => null);
-    if (!json || !json.bin || !json.file) {
-      throw new Error("Unexpected response from Filebin.");
-    }
-
-    const directUrl = `https://filebin.net/${json.bin.id}/${json.file.filename}`;
-    return directUrl;
+    return endpoint;
   }
 
   async function triggerWorkflow({
@@ -421,6 +433,52 @@
     els.useCustomUrl.addEventListener("change", sync);
   }
 
+  function initAuthGate() {
+    if (!els.loginScreen || !els.loginCard || !els.loginPassword || !els.loginButton) {
+      return;
+    }
+
+    const stored = localStorage.getItem(STORAGE_KEYS.auth) === "true";
+    if (stored) {
+      els.loginScreen.classList.add("hidden");
+      return;
+    }
+
+    const attemptLogin = () => {
+      const value = els.loginPassword.value.trim();
+      if (value === "1312") {
+        localStorage.setItem(STORAGE_KEYS.auth, "true");
+        els.loginScreen.classList.add("hidden");
+        els.loginPassword.value = "";
+      } else {
+        els.loginPassword.value = "";
+        els.loginCard.classList.remove("shake");
+        // retrigger animation
+        void els.loginCard.offsetWidth;
+        els.loginCard.classList.add("shake");
+      }
+    };
+
+    els.loginButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      attemptLogin();
+    });
+
+    if (els.loginForm) {
+      els.loginForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        attemptLogin();
+      });
+    }
+
+    els.loginPassword.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        attemptLogin();
+      }
+    });
+  }
+
   function formatTimestamp(timestamp) {
     const date = new Date(timestamp);
     if (Number.isNaN(date.getTime())) return "";
@@ -441,17 +499,22 @@
 
       const owner = OWNER;
       const repoName = REPO;
-      const token = GITHUB_TOKEN;
+      const token =
+        (els.githubToken && els.githubToken.value.trim()) ||
+        localStorage.getItem(STORAGE_KEYS.token) ||
+        "";
 
       if (!token) {
         createToast({
-          title: "Token not configured",
+          title: "Missing GitHub token",
           description:
-            "Set window.DIRECT_INSTALL_BOT_TOKEN in a script tag before using the dashboard.",
+            "Enter a GitHub Personal Access Token with repo and workflow scopes.",
           variant: "error",
         });
         return;
       }
+
+      persistToken(token);
 
       const appName = els.appName.value.trim();
       const bundleId = els.bundleId.value.trim();
@@ -508,15 +571,16 @@
         }
       }
 
+      setStatus("Preparing request…", "dispatch");
       toggleSubmitting(true);
 
       try {
         if (file) {
-          setStatus("Uploading IPA to Filebin…", "upload");
+          setStatus("Uploading file…", "upload");
           url = await uploadToFilebin(file);
         }
 
-        setStatus("Dispatching GitHub workflow…", "dispatch");
+        setStatus("Triggering workflow…", "dispatch");
         await triggerWorkflow({
           owner,
           repo: repoName,
@@ -528,6 +592,8 @@
           cleanupOld,
           folderName,
         });
+
+        setStatus("Manifest generation started…", "dispatch");
 
         const { rawUrl, itmsLink, manifestPath } = computeInstallLink({
           owner,
@@ -552,7 +618,7 @@
         persistHistory(history);
         refreshHistoryUI();
 
-        setStatus("Workflow dispatched. Link generated locally.", "success");
+        setStatus("Install link ready.", "success");
 
         createToast({
           title: "Workflow dispatched",
@@ -575,10 +641,12 @@
   }
 
   function init() {
+    initAuthGate();
     initCleanupToggle();
     initFileInput();
     initHistoryControls();
     initCustomUrlToggle();
+    loadToken();
     initForm();
     setStatus("Idle", "idle");
 
