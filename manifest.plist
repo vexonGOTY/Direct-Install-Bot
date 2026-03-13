@@ -11,15 +11,15 @@
                     <key>kind</key>
                     <string>software-package</string>
                     <key>url</key>
-                    <string>https://www.mediafire.com/file/t18wmhua31nlu81/Flero_2.207_1771419784.ipa/file?dkey=9rmc6929fng&r=9</string>
+                    <string>https://cvws.icloud-content.com/B/AVJ-yHhKP0RPDzyPT_KTw2EGLm0jAY7-XZjHwtKA8v1xslu2QVfpdBLU/Flero_2.208_1773416517.ipa</string>
                 </dict>
             </array>
             <key>metadata</key>
             <dict>
                 <key>bundle-identifier</key>
-                <string>flero.sp67.com</string>
+                <string>com.sp67.flero</string>
                 <key>bundle-version</key>
-                <string>2.207</string>
+                <string>2.208</string>
                 <key>kind</key>
                 <string>software</string>
                 <key>title</key>
